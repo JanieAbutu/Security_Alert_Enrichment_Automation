@@ -66,7 +66,7 @@ where an alert is sent to locally run Function.
 ### Run Tests
 
 ```powershell
-py -3.11 -m pytest -v
+python -3.11 -m pytest -v
 ```
 The tests mock external HTTP requests, so they do not require a real API key, newtwork access, or make requests to the reputation service.
 
