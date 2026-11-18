@@ -37,7 +37,7 @@ jobs:
           ruff check . --ignore TRY004
 
       - name: Run tests
-        run: py -3.11 -m pytest tests/ -v
+        run: python -m pytest tests/ -v
 
       - uses: hashicorp/setup-terraform@v3
         with:
