@@ -138,7 +138,9 @@ With more time, I would add persistent idempotency storage, configure monitoring
 
 ### Use of AI Assistance
 
-AI assistance was used to help explain unfamiliar concepts, review implementation decisions, troubleshoot issues and improve documentation. The code, tests and infrastructure configuration were reviewed and validated as part of the development process.
+AI assistance was used to help explain unfamiliar concepts, review some implementation decisions, troubleshoot issues and improve documentation. The code, tests and infrastructure configuration were also reviewed and validated as part of the development process.
+
+
 
 
 
