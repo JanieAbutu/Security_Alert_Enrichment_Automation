@@ -4,7 +4,7 @@ import logging
 import os
 import random
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 
 import requests
@@ -16,9 +16,9 @@ RATE_LIMIT = 4
 last_request = 0
 
 
-
 # Logging
 logger = logging.getLogger(__name__)
+
 
 def log_event(alert_id, event):
     logger.info(json.dumps({"alert_id": alert_id, "event": event}))
@@ -40,10 +40,8 @@ def validate_alert(alert):
 
     ips = alert["entities"].get("ips")
 
-    if not isinstance(ips, list) or not all(isinstance(ip,str) for ip in ips):
+    if not isinstance(ips, list) or not all(isinstance(ip, str) for ip in ips):
         raise ValueError("Invalid IP list")
-
-
 
 
 # Clean IP address
@@ -60,7 +58,7 @@ def clean_ips(ips):
         try:
             ip = ipaddress.ip_address(value)
         except ValueError:
-            skipped.append({"value": value, "reason":"invalid"})
+            skipped.append({"value": value, "reason": "invalid"})
             continue
 
         if str(ip) in seen:
@@ -68,13 +66,13 @@ def clean_ips(ips):
         seen.add(str(ip))
 
         if ip in ipaddress.ip_network("2001:db8::/32"):
-            reason ="reserved"
+            reason = "reserved"
         elif ip.is_loopback:
             reason = "loopback"
         elif ip.is_private:
             reason = "private"
         elif not ip.is_global:
-            reason ="reserved"
+            reason = "reserved"
         else:
             valid.append(str(ip))
             continue
@@ -95,14 +93,16 @@ def rate_limit():
     last_request = time.monotonic()
 
 
-#Look up IP reputation
+# Look up IP reputation
 def lookup_ip(ip, api_key):
     for attempt in range(MAX_RETRIES):
         try:
             rate_limit()
 
             response = requests.get(
-                API_URL.format(ip), headers={"X-Api-Key": api_key}, timeout=REQUEST_TIMEOUT
+                API_URL.format(ip),
+                headers={"X-Api-Key": api_key},
+                timeout=REQUEST_TIMEOUT,
             )
 
             if response.status_code == 404:
@@ -130,8 +130,7 @@ def lookup_ip(ip, api_key):
                 except (TypeError, ValueError):
                     try:
                         delay = (
-                            parsedate_to_datetime(retry_after)
-                            - datetime.now(timezone.utc)
+                            parsedate_to_datetime(retry_after) - datetime.now(UTC)
                         ).total_seconds()
                     except (TypeError, ValueError):
                         delay = 2**attempt
@@ -143,7 +142,6 @@ def lookup_ip(ip, api_key):
                 time.sleep(2**attempt + random.uniform(0, 0.5))
 
     return {"ip": ip, "status": "error", "message": "Retries exhausted"}
-
 
 
 # Enrich the alert

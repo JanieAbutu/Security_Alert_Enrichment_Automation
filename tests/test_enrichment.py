@@ -1,27 +1,30 @@
 import pytest
+import requests
+
+import enrichment
 import function_app
+from enrichment import clean_ips, validate_alert
 
-from enrichment import validate_alert, clean_ips
 
-
+# Test that a valid alert passes validation
 def test_validate_alert():
     alert = {
         "alert_id": "a-7f3c91",
         "title": "Suspicious sign-in",
         "severity": "medium",
-        "entities": {
-            "ips": ["185.220.101.4"]
-        },
+        "entities": {"ips": ["185.220.101.4"]},
     }
 
     assert validate_alert(alert) is None
 
 
+# Test that an invalid alert raises a ValueError
 def test_validate_alert_rejects_invalid_alert():
     with pytest.raises(ValueError):
         validate_alert({"alert_id": "a-123"})
 
 
+# Test that valid IPs are accepted and invalid or duplicate IPs are skipped
 def test_clean_ips():
     ips = [
         "185.220.101.4",
@@ -37,10 +40,7 @@ def test_clean_ips():
     assert len(skipped) == 3
 
 
-import requests
-import enrichment
-
-
+# Test that a successful API response returns the IP reputation details
 def test_lookup_ip_success(monkeypatch):
     class MockResponse:
         status_code = 200
@@ -66,6 +66,7 @@ def test_lookup_ip_success(monkeypatch):
     assert result["country"] == "DE"
 
 
+# Test that an IP not found by the API returns an unknown status
 def test_lookup_ip_404(monkeypatch):
     class MockResponse:
         status_code = 404
@@ -82,6 +83,7 @@ def test_lookup_ip_404(monkeypatch):
     assert result["status"] == "unknown"
 
 
+# Test that a request timeout returns an error status
 def test_lookup_ip_timeout(monkeypatch):
     monkeypatch.setattr(enrichment, "rate_limit", lambda: None)
     monkeypatch.setattr(
@@ -98,7 +100,7 @@ def test_lookup_ip_timeout(monkeypatch):
     assert result["status"] == "error"
 
 
-
+# Test that the API request is retried after a rate limit and eventually succeeds
 def test_lookup_ip_429_then_success(monkeypatch):
     class MockResponse:
         def __init__(self, status_code):
@@ -112,10 +114,12 @@ def test_lookup_ip_429_then_success(monkeypatch):
                 "country": "DE",
             }
 
-    responses = iter([
-        MockResponse(429),
-        MockResponse(200),
-    ])
+    responses = iter(
+        [
+            MockResponse(429),
+            MockResponse(200),
+        ]
+    )
 
     monkeypatch.setattr(enrichment, "rate_limit", lambda: None)
     monkeypatch.setattr(
@@ -131,10 +135,12 @@ def test_lookup_ip_429_then_success(monkeypatch):
     assert result["malicious"] is False
 
 
+# Test that repeated server errors eventually exhaust all retries
 def test_lookup_ip_persistent_500(monkeypatch):
     class MockResponse:
-        status_code = 500
-        headers = {}
+        def __init__(self):
+            self.status_code = 500
+            self.headers = {}
 
     calls = []
 
@@ -152,7 +158,7 @@ def test_lookup_ip_persistent_500(monkeypatch):
     assert len(calls) == enrichment.MAX_RETRIES
 
 
-
+# Test that an alert receives a malicious verdict when an IP is malicious
 def test_enrich_alert_malicious_verdict(monkeypatch):
     alert = {
         "alert_id": "a-7f3c91",
@@ -177,6 +183,7 @@ def test_enrich_alert_malicious_verdict(monkeypatch):
     assert result["verdict"] == "malicious"
 
 
+# Test that an alert receives an unknown verdict when an IP lookup fails
 def test_enrich_alert_unknown_verdict(monkeypatch):
     alert = {
         "alert_id": "a-7f3c91",
@@ -197,6 +204,7 @@ def test_enrich_alert_unknown_verdict(monkeypatch):
     assert result["verdict"] == "unknown"
 
 
+# Test that enrichment continues with other IPs when one lookup fails
 def test_enrich_alert_continues_after_lookup_failure(monkeypatch):
     alert = {
         "alert_id": "a-7f3c91",
@@ -225,7 +233,7 @@ def test_enrich_alert_continues_after_lookup_failure(monkeypatch):
     assert result["verdict"] == "unknown"
 
 
-
+# Test that the HTTP endpoint returns a 400 response for invalid JSON
 def test_enrich_rejects_invalid_json():
     class MockRequest:
         def get_json(self):

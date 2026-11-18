@@ -1,10 +1,14 @@
 import json
 import logging
+
 import azure.functions as func
+
 from enrichment import enrich_alert
 
-
 app = func.FunctionApp()
+
+logger = logging.getLogger(__name__)
+
 
 @app.route(route="enrich", methods=["POST"])
 def enrich(req: func.HttpRequest) -> func.HttpResponse:
@@ -36,8 +40,8 @@ def enrich(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     except Exception:
-        logging.exception("Alert enrichment failed")
-    
+        logger.exception("Alert enrichment failed")
+
         return func.HttpResponse(
             json.dumps({"error": "Internal server error"}),
             status_code=500,
