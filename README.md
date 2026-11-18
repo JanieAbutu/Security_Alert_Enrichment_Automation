@@ -134,11 +134,11 @@ Alerts shoulcan d be configured for Function failures, unexpected increases in f
 
 ## Further Improvements
 
-With more time, I would add persistent idempotency storage, configure monitoring alerts, and test the complete deployment process in an Azure environment. I would also add integration tests against a controlled test endpoint.
+With more time, persistent idempotency storage can be added, monitoring alerts configure, and test the complete deployment process in an Azure environment. 
 
 ### Use of AI Assistance
 
-AI assistance was used to help explain unfamiliar concepts, review some implementation decisions, troubleshoot issues and improve documentation. The code, tests and infrastructure configuration were also reviewed and validated as part of the development process.
+AI assistance was used to help explain unfamiliar concepts, review some implementation decisions, and troubleshoot issues. The code, tests and configuration were also reviewed and validated as part of the development process.
 
 
 
