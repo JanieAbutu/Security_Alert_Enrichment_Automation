@@ -143,3 +143,51 @@ def lookup_ip(ip, api_key):
                 time.sleep(2**attempt + random.uniform(0, 0.5))
 
     return {"ip": ip, "status": "error", "message": "Retries exhausted"}
+
+
+
+# Enrich the alert
+def enrich_alert(alert):
+    validate_alert(alert)
+
+    alert_id = alert["alert_id"]
+    api_key = os.getenv("REPUTATION_API_KEY")
+
+    if not api_key:
+        raise ValueError("Missing API key")
+
+    valid_ips, skipped = clean_ips(alert["entities"]["ips"])
+    results, errors = [], []
+
+    log_event(alert_id, "alert_received")
+
+    for ip in valid_ips:
+        try:
+            result = lookup_ip(ip, api_key)
+
+        except (requests.RequestException, ValueError, KeyError) as e:
+            result = {"ip": ip, "status": "error", "message": str(e)}
+
+        results.append(result)
+
+        if result["status"] == "error":
+            errors.append(result)
+
+    if not results:
+        verdict = "unknown"
+    elif any(result.get("malicious") for result in results):
+        verdict = "malicious"
+    elif any(result["status"] in ("error", "unknown") for result in results):
+        verdict = "unknown"
+    else:
+        verdict = "clean"
+
+    log_event(alert_id, "alert_enriched")
+
+    return {
+        "alert_id": alert_id,
+        "verdict": verdict,
+        "results": results,
+        "skipped": skipped,
+        "errors": errors,
+    }
